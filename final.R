@@ -1,7 +1,13 @@
-trafficAccidents <- read_csv("trafficAccidents.csv")  
 
-glimpse(trafficAccidents$accident_date)  
+library(tidyverse)
+library(ntpuR)
 
-a <- 3
 
-B <- "HI"
+file_path <- "臺北市役男徵集概況統計.csv"
+
+
+tidy_data <- read_csv(file_path, locale = locale(encoding = "UTF-8"))
+
+
+head(tidy_data)
+
