@@ -1,5 +1,5 @@
 # Load required libraries
-library(tidyverse)  # For data manipulation
+library(tidyverse)  # For data manipulation and plotting
 library(ntpuR)      # Assuming it provides relevant tools
 
 # File path
@@ -56,6 +56,31 @@ role_translation <- c(
   "主席" = "Chairperson",
   "副主席" = "Vice Chairperson"
 )
+
+# Rename columns for easier handling (already in your code)
+tidy_data <- tidy_data %>%
+  rename(
+    index = 項次,
+    role = 委員會職務,
+    name = 姓名,
+    organization = 服務單位,
+    position = 現職,
+    gender = 性別,
+    gender_code = 性別代碼
+  )
+
+# Translate roles using the role_translation dictionary
+role_translation <- c(
+  "委員" = "Member",
+  "主席" = "Chairperson",
+  "副主席" = "Vice Chairperson",
+  "委員會職務" = "Committee Duty",
+  "幹事" = "Secretary",
+  "觀察員" = "Observer"
+)
+
+tidy_data <- tidy_data %>%
+  mutate(role = recode(role, !!!role_translation))
 
 # Translate roles
 tidy_data <- tidy_data %>%
@@ -123,4 +148,70 @@ glimpse(tidy_data)
 write_csv(tidy_data, "cleaned_data.csv")
 write_csv(tidy_pivot, "pivoted_data.csv")  # Export pivoted data
 
-message("Data parsing, cleaning, translating, and pivoting complete. Files saved as 'cleaned_data.csv' and 'pivoted_data.csv'.")
+# Visualizations
+# 1. Gender Distribution Bar Plot
+ggplot(tidy_data, aes(x = gender, fill = gender)) +
+  geom_bar() +
+  labs(
+    title = "Gender Distribution",
+    x = "Gender",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+# 2. Role Distribution Bar Plot
+ggplot(role_summary, aes(x = reorder(role, count), y = count, fill = role)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +  # Flip axes for better readability
+  labs(
+    title = "Role Distribution",
+    x = "Role",
+    y = "Count"
+  ) +
+  theme_minimal()
+
+# 3. Role and Gender Combined Plot
+ggplot(role_gender_summary, aes(x = role, y = count, fill = gender)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Role and Gender Distribution",
+    x = "Role",
+    y = "Count",
+    fill = "Gender"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 4. Pivot Data Heatmap (If Applicable)
+tidy_pivot_long <- tidy_pivot %>%
+  pivot_longer(cols = -index, names_to = "role", values_to = "name") %>%
+  mutate(value = ifelse(is.na(name), 0, 1))
+
+ggplot(tidy_pivot_long, aes(x = role, y = index, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(
+    title = "Heatmap of Names Across Roles",
+    x = "Role",
+    y = "Index",
+    fill = "Presence"
+  ) +
+  theme_minimal()
+
+# 5. Missing Data Visualization
+missing_data <- tidy_data %>%
+  summarize(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "column", values_to = "missing_count")
+
+ggplot(missing_data, aes(x = reorder(column, -missing_count), y = missing_count)) +
+  geom_col(fill = "red") +
+  labs(
+    title = "Missing Data Summary",
+    x = "Column",
+    y = "Count of Missing Values"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+message("Data parsing, cleaning, translating, pivoting, and visualization complete.")
+
