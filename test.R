@@ -24,52 +24,80 @@ tryCatch({
 # Glimpse the data to inspect its structure
 glimpse(tidy_data)
 
-# Rename columns for easier handling
-tidy_data <- tidy_data %>%
-  rename(
-    index = 項次,
-    role = 委員會職務,
-    name = 姓名,
-    organization = 服務單位,
-    position = 現職,
-    gender = 性別,
-    gender_code = 性別代碼
-  )
+# Translation dictionary for column names
+translation_dict <- c(
+  項次 = "index",
+  委員會職務 = "role",
+  姓名 = "name",
+  服務單位 = "organization",
+  現職 = "position",
+  性別 = "gender",
+  性別代碼 = "gender_code"
+)
 
-# Handle missing values in the 'gender' column
+# Rename columns using the translation dictionary
 tidy_data <- tidy_data %>%
-  mutate(gender = ifelse(is.na(gender), "Unknown", gender))
+  rename_with(~ translation_dict[.x], .cols = everything())
 
-# Fix encoding issues in the 'position' column
+# Translation dictionary for gender values
+gender_translation <- c(
+  "男" = "Male",
+  "女" = "Female",
+  "未知" = "Unknown"
+)
+
+# Translate gender values
+tidy_data <- tidy_data %>%
+  mutate(gender = recode(gender, !!!gender_translation))
+
+# Translation dictionary for role values (if applicable)
+role_translation <- c(
+  "委員" = "Member",
+  "主席" = "Chairperson",
+  "副主席" = "Vice Chairperson"
+)
+
+# Translate roles
+tidy_data <- tidy_data %>%
+  mutate(role = recode(role, !!!role_translation))
+
+# Fix encoding issues in the 'position' column (Regex example)
 tidy_data <- tidy_data %>%
   mutate(position = str_replace_all(position, "[^[:print:]]", ""))
 
-# Check for missing values
+# Check for missing values (Summarize Part)
 missing_summary <- tidy_data %>%
-  summarize(across(everything(), ~ sum(is.na(.))))
+  summarize(across(everything(), ~ sum(is.na(.))))  # Summarizes missing values
 
-# Verify unique and sequential index
+# Verify unique and sequential index (Summarize Part)
 index_check <- tidy_data %>%
   summarize(
     is_unique = n_distinct(index) == n(),
     is_sequential = all(diff(sort(index)) == 1)
-  )
+  )  # Summarizes index validity
 
-# Gender distribution summary
+# Gender distribution summary (Summarize Part)
 gender_summary <- tidy_data %>%
-  count(gender, name = "count")
+  count(gender, name = "count")  # Summarizes gender distribution
 
-# Role distribution summary
+# Role distribution summary (Summarize Part)
 role_summary <- tidy_data %>%
   count(role, name = "count") %>%
-  arrange(desc(count))
+  arrange(desc(count))  # Summarizes role distribution
 
-# Gender and role combined distribution
+# Gender and role combined distribution (Summarize Part)
 role_gender_summary <- tidy_data %>%
   count(role, gender, name = "count") %>%
-  arrange(desc(count))
+  arrange(desc(count))  # Summarizes role and gender combined distribution
+
+# Pivot data: Convert roles into columns for analysis
+tidy_pivot <- tidy_data %>%
+  pivot_wider(names_from = role, values_from = name, values_fill = NA)
 
 # Output summaries for verification
+print("Translated Column Names:")
+print(colnames(tidy_data))
+
 print("Missing Value Summary:")
 print(missing_summary)
 
@@ -85,11 +113,14 @@ print(role_summary)
 print("Role and Gender Combined Distribution:")
 print(role_gender_summary)
 
+print("Pivoted Data Preview:")
+print(head(tidy_pivot))
+
 # Glimpse cleaned data
 glimpse(tidy_data)
 
 # Export cleaned data
 write_csv(tidy_data, "cleaned_data.csv")
+write_csv(tidy_pivot, "pivoted_data.csv")  # Export pivoted data
 
-message("Data parsing and cleaning complete. Cleaned data saved as 'cleaned_data.csv'.")
-
+message("Data parsing, cleaning, translating, and pivoting complete. Files saved as 'cleaned_data.csv' and 'pivoted_data.csv'.")
